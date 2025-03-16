@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiziz - Interactive Learning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C5CE7;
+            --primary-dark: #4834D4;
+            --success: #00CC99;
+            --success-dark: #00B386;
+            --background: #F7F9FC;
+            --card-bg: #FFFFFF;
+            --text-primary: #2D3436;
+            --text-secondary: #636E72;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--background);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        #quiz-container {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 480px;
+            padding: 32px;
+            transition: transform 0.3s ease;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #quiz h2 {
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            line-height: 1.4;
+        }
+
+        #choices {
+            list-style: none;
+            display: grid;
+            gap: 12px;
+        }
+
+        .choice-item {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 2px solid #EDEFF2;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .choice-item::before {
+            content: attr(data-answer);
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .choice-item span {
+            margin-left: 40px;
+            display: block;
+        }
+
+        #result {
+            display: none;
+            text-align: center;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #result h2 {
+            margin-bottom: 16px;
+            font-size: 1.75rem;
+        }
+
+        #score {
+            color: var(--success);
+            font-weight: 700;
+        }
+
+        #retake {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+        }
+
+        #retake:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #EDEFF2;
+            border-radius: 2px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 480px) {
+            #quiz-container {
+                padding: 20px;
+            }
+            
+            #quiz h2 {
+                font-size: 1.25rem;
+            }
+            
+            .choice-item {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--primary);
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="quiz-container">
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
+        </div>
+        <div id="quiz">
+            <h2 id="question">Loading question...</h2>
+            <ul id="choices">
+                <li class="choice-item" data-answer="A"><span>Option A</span></li>
+                <li class="choice-item" data-answer="B"><span>Option B</span></li>
+                <li class="choice-item" data-answer="C"><span>Option C</span></li>
+                <li class="choice-item" data-answer="D"><span>Option D</span></li>
+            </ul>
+        </div>
+        <div id="result">
+            <h2>Your Score: <span id="score"></span>/<span id="total"></span></h2>
+            <button id="retake">Retake Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+    {
+    "questions": "What is a cash crop primarily grown for?",
+    "A": "Local consumption",
+    "B": "Export",
+    "C": "Religious ceremonies",
+    "D": "Medicinal use",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was the purpose of the 1849 Claveria decree?",
+    "A": "To establish new taxes",
+    "B": "To regulate trade routes",
+    "C": "To standardize surnames",
+    "D": "To abolish slavery",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "Which trade system connected the Philippines and Mexico from 1565 to 1815?",
+    "A": "Silk Road",
+    "B": "Trans-Atlantic Trade",
+    "C": "Galleon Trade",
+    "D": "Maritime Spice Trade",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "Who were the Insulares?",
+    "A": "Spaniards born in the Philippines",
+    "B": "Native Filipino elites",
+    "C": "Foreign merchants",
+    "D": "Chinese traders",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "A Mestizo is someone of mixed ancestry, typically with one parent being:",
+    "A": "Spanish or Chinese and the other native",
+    "B": "Portuguese and Filipino",
+    "C": "French and Filipino",
+    "D": "Japanese and Filipino",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "What were merchant houses in Manila primarily used for?",
+    "A": "Storing weapons",
+    "B": "Trading and business",
+    "C": "Religious gatherings",
+    "D": "Political meetings",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was a Pacto de Retroventa?",
+    "A": "A secret resistance group",
+    "B": "A religious tax",
+    "C": "A land sale agreement with a repurchase option",
+    "D": "A trade contract between Spain and China",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "What was the purpose of the Parian in Manila?",
+    "A": "A market for local artisans",
+    "B": "A designated area for Chinese residents",
+    "C": "A military base",
+    "D": "A prison for political prisoners",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "Who were the Peninsulares?",
+    "A": "Spaniards born in Spain",
+    "B": "Native Filipinos",
+    "C": "Chinese traders",
+    "D": "Portuguese explorers",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "The Principalia class consisted of:",
+    "A": "Wealthy native elites",
+    "B": "European soldiers",
+    "C": "Foreign merchants",
+    "D": "Common farmers",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "The term Sangley refers to:",
+    "A": "Filipino revolutionaries",
+    "B": "Pure Chinese individuals engaged in trade",
+    "C": "Spanish priests",
+    "D": "Filipino farmers",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What does social stratification refer to?",
+    "A": "A military ranking system",
+    "B": "The division of society based on socioeconomic and political factors",
+    "C": "A religious classification",
+    "D": "The process of cultural assimilation",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was one of the primary goals of the Bourbon Reforms?",
+    "A": "To increase church power",
+    "B": "To curb contraband and control transatlantic trade",
+    "C": "To eliminate cash crops",
+    "D": "To abolish colonial rule",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was the purpose of the Royal Philippine Company (1785)?",
+    "A": "To fund missionary activities",
+    "B": "To improve colonial defense",
+    "C": "To finance agriculture and manage Asian trade",
+    "D": "To establish a Spanish military base in the Philippines",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "How did the shift to cash crops impact Filipino farmers?",
+    "A": "They gained more land and wealth",
+    "B": "They abandoned farming entirely",
+    "C": "They moved from food crops to cash crops for export",
+    "D": "They stopped trading with China",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "What was a major risk for small landowners using the pacto de retroventa?",
+    "A": "They might lose their land and become tenant farmers",
+    "B": "They would be arrested by Spanish authorities",
+    "C": "They would have to join the military",
+    "D": "They would be forced to leave the colony",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "What role did Chinese goods play in the Galleon Trade?",
+    "A": "They were central to trade and highly sought after",
+    "B": "They were banned by Spanish authorities",
+    "C": "They were only used for religious purposes",
+    "D": "They had no significant impact on trade",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "What restrictions did the Chinese face in colonial society?",
+    "A": "They were given high-ranking government positions",
+    "B": "They faced higher taxes and restricted movement",
+    "C": "They were completely expelled from the Philippines",
+    "D": "They were allowed to own large plantations",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was a major consequence of intermarriage between Chinese and Filipinos?",
+    "A": "It produced influential Chinese mestizos",
+    "B": "It was outlawed by the Spanish government",
+    "C": "It ended trade relations between China and the Philippines",
+    "D": "It led to the creation of new religions",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Why did literacy and education rise in the 19th century?",
+    "A": "The economy required a skilled, literate workforce",
+    "B": "The Spanish government banned illiteracy",
+    "C": "The Catholic Church made education compulsory",
+    "D": "Only the elite were allowed to study",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "What was one major urban challenge caused by migration to trade centers like Manila?",
+    "A": "Rapid economic decline",
+    "B": "Overcrowding and poor sanitation",
+    "C": "A complete lack of job opportunities",
+    "D": "A decrease in crime",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was the purpose of the 1849 Claveria decree?",
+    "A": "To enforce tax collection",
+    "B": "To assign surnames for better record-keeping",
+    "C": "To abolish cash crop farming",
+    "D": "To ban intermarriage",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was the role of the Guardia Civil?",
+    "A": "To enforce order and maintain security",
+    "B": "To regulate agricultural production",
+    "C": "To oversee religious activities",
+    "D": "To conduct trade with China",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Who were at the top of the colonial social pyramid?",
+    "A": "Ilustrados",
+    "B": "Indios",
+    "C": "Peninsulares",
+    "D": "Chinese mestizos",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "Which group was composed of educated native elites?",
+    "A": "Ilustrados",
+    "B": "Sangley",
+    "C": "Chino Infiel",
+    "D": "Timawa",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Who were classified as Insulares?",
+    "A": "Native Filipino peasants",
+    "B": "Spaniards born in the Philippines",
+    "C": "Chinese traders",
+    "D": "Indigenous warriors",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What term referred to pure-blooded natives?",
+    "A": "Mestizo",
+    "B": "Indio",
+    "C": "Maharlika",
+    "D": "Principalia",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "Which term referred to non-Catholic pure-blooded Chinese?",
+    "A": "Ilustrado",
+    "B": "Chino Infiel",
+    "C": "Principalia",
+    "D": "Alipin sa Gigilid",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "Who were the Maharlika in pre-colonial society?",
+    "A": "Free commoners",
+    "B": "Noble warrior class",
+    "C": "Indigenous traders",
+    "D": "Spanish priests",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "Which pre-colonial class consisted of free commoners?",
+    "A": "Timawa",
+    "B": "Alipin sa Gigilid",
+    "C": "Peninsulares",
+    "D": "Chino Infiel",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Who were the Aliping Namamahay?",
+    "A": "A noble warrior class",
+    "B": "Household servants with some rights",
+    "C": "Spanish governors",
+    "D": "Foreign traders",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What defined the Alipin sa Gigilid class?",
+    "A": "They were the lowest, most dependent class",
+    "B": "They were wealthy landowners",
+    "C": "They were traders and merchants",
+    "D": "They were government officials",
+    "Correct_answer": "A"
+  },
+  
+  {
+    "questions": "What was the primary role of a conquistador?",
+    "A": "A Spanish missionary spreading Christianity",
+    "B": "A Spanish conqueror who claimed and controlled territories",
+    "C": "A local chieftain governing native lands",
+    "D": "A merchant engaged in the Galleon Trade",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was a caballero in the colonial land system?",
+    "A": "A Spanish military officer",
+    "B": "A large land estate used for livestock",
+    "C": "A small tract of land included in a land grant",
+    "D": "A tax levied on agricultural products",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "In colonial measurements, what was a canon?",
+    "A": "A measure equal to 75 liters",
+    "B": "A land tax paid by inquilinos",
+    "C": "A Spanish military weapon",
+    "D": "A title given to wealthy landowners",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Which term refers to large estates used for livestock and agriculture?",
+    "A": "Hacienda",
+    "B": "Parian",
+    "C": "Galleon",
+    "D": "Sitio de Ganado Mayor",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Who was an inquilino in the tenant system?",
+    "A": "A friar overseeing agricultural lands",
+    "B": "A tenant renting land from friars and subleasing it to sharecroppers",
+    "C": "A Spanish soldier stationed in the colony",
+    "D": "A native farmer forced into labor",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "The ruling elite class in the colonial system was known as:",
+    "A": "Sangley",
+    "B": "Principales",
+    "C": "Insulares",
+    "D": "Peninsulares",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was the role of a sharecropper (kasama)?",
+    "A": "A Spanish settler managing estates",
+    "B": "A merchant involved in the Manila-Acapulco trade",
+    "C": "A laborer renting land from an inquilino and working the land",
+    "D": "A Catholic priest collecting tributes",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "What was a Sitio de Ganado Mayor?",
+    "A": "A large tract of land included in a land grant",
+    "B": "A Spanish naval fortification",
+    "C": "A system of forced labor under the encomienda",
+    "D": "A galleon shipyard",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Which sector had the highest poverty incidence in 2018?",
+    "A": "Farmers",
+    "B": "Merchants",
+    "C": "Government officials",
+    "D": "Religious orders",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "What was a major reason Spanish hacienderos failed in managing their estates?",
+    "A": "Frequent revolts by native workers",
+    "B": "Small market for livestock products early in the colonial period",
+    "C": "High tariffs imposed by the Spanish Crown",
+    "D": "Interference by foreign traders",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "How did religious orders acquire large estates?",
+    "A": "By military conquest",
+    "B": "Through donations or purchasing mortgaged properties",
+    "C": "By inheriting land from Spanish noble families",
+    "D": "Through direct trade with China",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was the role of friars as landlords?",
+    "A": "They directly worked on the land themselves",
+    "B": "They enforced forced labor on all tenants",
+    "C": "They owned and managed haciendas but avoided direct labor obligations",
+    "D": "They were primarily responsible for tax collection",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "Why did many tenants prefer the sharecropper system?",
+    "A": "It provided higher wages",
+    "B": "It exempted them from forced labor obligations by the government",
+    "C": "It granted them permanent ownership of the land",
+    "D": "It allowed them to trade freely with foreign merchants",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "Which colonial estate was the focus of a major agrarian dispute?",
+    "A": "Hacienda de Calamba",
+    "B": "Hacienda Luisita",
+    "C": "Fort Santiago",
+    "D": "Intramuros Estate",
+    "Correct_answer": "A"
+  },
+  {
+    "questions": "Who originally donated Hacienda de Calamba to the Jesuits in 1759?",
+    "A": "Don Clemente de Azansa",
+    "B": "Don Manuel Jauregui",
+    "C": "Jose Rizal",
+    "D": "Governor-General Claveria",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was a key grievance of tenants in Hacienda de Calamba?",
+    "A": "The mandatory military service for all tenants",
+    "B": "High tariffs on sugar exports",
+    "C": "Rents were collected without issuing receipts",
+    "D": "Ban on Filipino ownership of land",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "How did Jose Rizal contribute to the Hacienda de Calamba dispute?",
+    "A": "He led an armed rebellion against the Spanish landlords",
+    "B": "He authored a petition listing tenant grievances",
+    "C": "He served as a legal representative for the tenants in court",
+    "D": "He organized a cooperative to buy the land from the friars",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "What was a major consequence of the Hacienda de Calamba dispute?",
+    "A": "The hacienda was redistributed to the tenants",
+    "B": "The Spanish government abolished the friar land system",
+    "C": "Tenants, including Rizal’s family, were evicted",
+    "D": "The Dominican friars were expelled from the Philippines",
+    "Correct_answer": "C"
+  },
+  {
+    "questions": "What broader historical issue did the Hacienda de Calamba dispute highlight?",
+    "A": "The failure of the encomienda system",
+    "B": "The agrarian crisis caused by Spanish colonial land policies",
+    "C": "The decline of Spanish power in Asia",
+    "D": "The rise of industrialization in the Philippines",
+    "Correct_answer": "B"
+  },
+  {
+    "questions": "Why do some historians view the Philippine Revolution as agrarian in nature?",
+    "A": "It was sparked by peasant uprisings against landowners",
+    "B": "It focused entirely on agricultural reforms",
+    "C": "It was led by hacienderos and landowners",
+    "D": "It started with a dispute over sugar prices",
+    "Correct_answer": "A"
+  }
+
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+
+        const questionEl = document.getElementById("question");
+        const choicesEl = document.getElementById("choices");
+        const quizDiv = document.getElementById("quiz");
+        const resultDiv = document.getElementById("result");
+        const scoreEl = document.getElementById("score");
+        const totalEl = document.getElementById("total");
+        const retakeBtn = document.getElementById("retake");
+        const progressFill = document.querySelector(".progress-fill");
+        const container = document.getElementById("quiz-container");
+
+        function updateProgress() {
+            const progress = quizData.length > 0 ? 
+                ((currentQuestion) / quizData.length) * 100 : 0;
+            progressFill.style.width = `${progress}%`;
+        }
+
+        async function loadQuestion() {
+            if (quizData.length === 0) {
+                questionEl.textContent = "No questions available.";
+                choicesEl.style.display = "none";
+                return;
+            }
+            
+            container.classList.add("loading");
+            await new Promise(resolve => setTimeout(resolve, 300)); // Simulate loading
+            
+            if (currentQuestion < quizData.length) {
+                const q = quizData[currentQuestion];
+                questionEl.textContent = q.questions;
+                const choiceItems = choicesEl.querySelectorAll(".choice-item");
+                choiceItems[0].querySelector("span").textContent = q.A;
+                choiceItems[1].querySelector("span").textContent = q.B;
+                choiceItems[2].querySelector("span").textContent = q.C;
+                choiceItems[3].querySelector("span").textContent = q.D;
+                updateProgress();
+            } else {
+                showResult();
+            }
+            container.classList.remove("loading");
+        }
+
+        function showResult() {
+            quizDiv.style.display = "none";
+            resultDiv.style.display = "block";
+            scoreEl.textContent = score;
+            totalEl.textContent = quizData.length;
+            progressFill.style.width = "100%";
+        }
+
+        choicesEl.addEventListener("click", async (event) => {
+            const li = event.target.closest(".choice-item");
+            if (!li) return;
+
+            const selected = li.getAttribute("data-answer");
+            const q = quizData[currentQuestion];
+            
+            if (selected === q.Correct_answer) {
+                score++;
+                li.style.borderColor = "var(--success)";
+            } else {
+                li.style.borderColor = "#FF6B6B";
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+            currentQuestion++;
+            loadQuestion();
+        });
+
+        retakeBtn.addEventListener("click", () => {
+            currentQuestion = 0;
+            score = 0;
+            quizDiv.style.display = "block";
+            resultDiv.style.display = "none";
+            loadQuestion();
+        });
+
+        // Ensure DOM is loaded before running script
+        document.addEventListener("DOMContentLoaded", () => {
+            loadQuestion();
+        });
+    </script>
+</body>
+</html>
